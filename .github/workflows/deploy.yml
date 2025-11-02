@@ -1,45 +1,49 @@
-name: Deploy React app to GitHub Pages
+name: Build and Deploy
 
 on:
   push:
     branches:
-      - main  # or 'master' if that's your branch
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+      - main  # Runs whenever you push to the main branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
+      # Step 1: Checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # Step 2: Use Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
+          cache: "npm"  # enables dependency caching for faster builds
 
+      # Step 3: Ensure package-lock is in sync before ci
+      - name: Verify package-lock.json
+        run: |
+          if ! npm ls > /dev/null 2>&1; then
+            echo "Lockfile is out of sync, running npm install to fix..."
+            npm install
+          fi
+
+      # Step 4: Install dependencies (using npm ci for clean reproducible install)
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
 
+      # Step 5: Run tests (optional — skip if not needed)
+      - name: Run tests
+        run: npm test --if-present
+
+      # Step 6: Build the project
       - name: Build project
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload build folder
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./build
-
+      # Step 7: Deploy to GitHub Pages (auto-hosted from ./build)
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
