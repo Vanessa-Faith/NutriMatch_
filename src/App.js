@@ -34,7 +34,7 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router basename="/nutrimatch">
       <div className="min-h-screen bg-gray-50">
         <Navbar user={user} />
         <Routes>
